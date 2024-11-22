@@ -1,1 +1,45 @@
+import sys
 
+STRAIGHT = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+DIAGONAL = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+KNIGHT = [(-2, -1), (-1, -2), (1, -2), (2, -1), (2, 1), (1, 2), (-1, 2), (-2, 1)]
+PAWN = [(-1, -1), (-1, 1)]
+
+def is_in_bounds(x, y): return 0 <= x < 8 and 0 <= y < 8
+
+def find_king(board, k): return next(((x, y) for x, row in enumerate(board) for y, p in enumerate(row) if p == k), None)
+
+def is_threatened(board, x, y, is_white):
+    enemies = {'P': ('p', 'n', 'rq', 'bq'), 'p': ('P', 'N', 'RQ', 'BQ')}[('K' if is_white else 'k')]
+    pawn, knight, straight, diagonal = enemies
+    return any(
+        is_in_bounds(px := x + dx, py := y + dy) and board[px][py] == pawn for dx, dy in PAWN
+    ) or any(
+        is_in_bounds(nx := x + dx, ny := y + dy) and board[nx][ny] == knight for dx, dy in KNIGHT
+    ) or any(
+        any((piece := board[nx][ny]) in (straight if dx in STRAIGHT else diagonal) for nx, ny in
+            [(x + dx * i, y + dy * i) for i in range(1, 8)] if is_in_bounds(nx, ny) and piece != '.')
+        for dx, dy in STRAIGHT + DIAGONAL
+    )
+def possiblekingmoves(board, x, y):
+    return [(x + dx, y + dy) for dx in [-1, 0, 1] for dy in [-1, 0, 1]
+            if (dx or dy) and isinbounds(x + dx, y + dy) and board[x + dx][y + dy] == '.']
+def avoid_checkmate(board, is_white):
+    king = find_king(board, 'K' if is_white else 'k')
+    return next(
+        ((temp := [list(row) for row in board]) and not is_threatened(temp, move[0], move[1], is_white)
+         and move for move in possible_king_moves(board, *king)), None) if king else None
+def read_board(file_path):
+    try:
+        with open(file_path) as f:
+            board = [line.strip() for line in f]
+            return board if len(board) == 8 and all(len(row) == 8 for row in board) else None
+    except FileNotFoundError:
+        return None
+def main():
+    if len(sys.argv) < 2 or not (board := read_board(sys.argv[1])):
+        print("Usage: python script.py <board_file> or invalid board")
+        return
+    print(f"Best move: {move}" if (move := avoid_checkmate(board, is_white=True)) else "No safe moves. Checkmate!")
+if __name == "__main":
+    main()
